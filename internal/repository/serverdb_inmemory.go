@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"sync"
+	"fmt"
 
 	"github.com/VitorDie/SadRat/internal/domain"
 )
@@ -62,4 +63,22 @@ func (r *ServerDBPlainDataInMemory) GetJob(id string) (domain.JobRow, error) {
 		return domain.JobRow{}, errors.New("job não encontrado")
 	}
 	return job, nil
+}
+
+func (r *ServerDBPlainDataInMemory) GetJobForAgent(agentID string) (domain.JobRow, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	fmt.Printf("[DEBUG DB] Buscando job para o Agente: '%s'\n", agentID)
+	fmt.Printf("[DEBUG DB] Total de jobs no banco: %d\n", len(r.jobs))
+
+	for _, job := range r.jobs {
+		fmt.Printf("[DEBUG DB] Analisando Job ID: %s | AgentID do Job: '%s' | ExecutedAt: %v\n", job.ID, job.AgentID, job.ExecutedAt)
+		
+		if job.AgentID == agentID && job.ExecutedAt == nil {
+			return job, nil
+		}
+	}
+
+	return domain.JobRow{}, errors.New("nenhum comando pendente encontrado")
 }
