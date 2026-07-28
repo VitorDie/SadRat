@@ -88,3 +88,46 @@ func TestServerHTTP_ReceiveCommand(t *testing.T) {
 		t.Errorf("Esperava que a API confirmasse o comando 'whoami', mas retornou '%v'", response["command"])
 	}
 }
+
+func TestServerHTTP_SendJobs(t *testing.T) {
+	// 1. Especificação: Instanciamos o cofre e o Servidor
+	repo := repository.NewServerDBPlainDataInMemory()
+	server := presentation.NewServerHTTP(repo)
+
+	// Simulamos que um Agente existe no banco
+	agentID := "agent-123"
+	repo.SaveAgent(domain.NewAgentRow(agentID))
+
+	// Simulamos que o Operador JÁ ENVIOU um comando para esse agente
+	job := domain.NewJobRow(agentID, "whoami", []string{})
+	repo.SaveJob(job)
+
+	// 2. Ação: O Agente faz a requisição GET para buscar comandos (Long Polling)
+	// Note o uso da URL com o ID do agente embutido
+	url := "/api/agents/" + agentID + "/job"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("Erro ao criar a requisição: %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	
+	// O Roteador recebe a requisição HTTP e deve processar
+	server.Router().ServeHTTP(rr, req)
+
+	// 3. Validação de Rota e Status
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Esperava status 200 (OK), recebeu %v", status)
+	}
+
+	// 4. Validação da Resposta: A API deve devolver o JSON do Job salvo no banco
+	var response map[string]interface{}
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Fatalf("Erro ao decodificar JSON da resposta do C&C: %v", err)
+	}
+
+	if response["command"] != "whoami" {
+		t.Errorf("Esperava o comando 'whoami', mas retornou '%v'", response["command"])
+	}
+}
