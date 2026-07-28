@@ -5,16 +5,16 @@ import (
 	"github.com/VitorDie/SadRat/internal/domain"
 )
 
-func TestNewJobInfoCreation(t *testing.T) {
+func TestNewJobRowCreation(t *testing.T) {
 	// 1. A nossa especificação (os dados que vamos enviar)
 	agentID := "agent-123"
 	command := "ls"
 	args := []string{"-la", "/tmp"}
 
-	// 2. A ação: chamar a função construtora que cria um JobInfo
-	job := domain.NewJobInfo(agentID, command, args)
+	// 2. A ação: chamar a função construtora que cria um JobRow
+	job := domain.NewJobRow(agentID, command, args)
 
-	// 3. As validações (checando se o JobInfo nasceu com as regras corretas)
+	// 3. As validações (checando se o JobRow nasceu com as regras corretas)
 	
 	if job.ID == "" {
 		t.Error("Esperava que o ID (UUID) fosse gerado automaticamente, mas veio vazio")
