@@ -82,3 +82,17 @@ func (r *ServerDBPlainDataInMemory) GetJobForAgent(agentID string) (domain.JobRo
 
 	return domain.JobRow{}, errors.New("nenhum comando pendente encontrado")
 }
+
+// UpdateJob sobrescreve uma linha existente na tabela de jobs.
+func (r *ServerDBPlainDataInMemory) UpdateJob(job domain.JobRow) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Verifica se a linha realmente existe antes de atualizar
+	if _, exists := r.jobs[job.ID]; !exists {
+		return errors.New("job não encontrado para atualização")
+	}
+
+	r.jobs[job.ID] = job
+	return nil
+}

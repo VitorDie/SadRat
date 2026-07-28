@@ -17,11 +17,19 @@ type CreateJobRequest struct {
 	Args    []string `json:"args"`
 }
 
+// NOVO DTO: O que o Agente envia após executar o comando
+type UpdateJobResultRequest struct {
+	JobID  string `json:"job_id"`
+	Output string `json:"output"`
+}
+
 // Repository exige os métodos que o Servidor precisa para funcionar
 type Repository interface {
 	SaveAgent(agent domain.AgentRow) error
 	SaveJob(job domain.JobRow) error // Adicionamos a exigência de salvar o comando
 	GetJobForAgent(agentID string) (domain.JobRow, error) // Novo método
+	GetJob(id string) (domain.JobRow, error) 
+	UpdateJob(job domain.JobRow) error
 }
 
 // ServerHTTP é a nossa API C&C
@@ -42,6 +50,7 @@ func (s *ServerHTTP) Router() http.Handler {
 	mux.HandleFunc("POST /api/agents", s.handleGiveAnUUIDForAgentRequest)
 	mux.HandleFunc("POST /api/jobs", s.handleReceiveCommand) // Nova rota do Operador
 	mux.HandleFunc("GET /api/agents/{agent_id}/job", s.handleFetchJobForAgent) // Nova rota para buscar comandos
+	mux.HandleFunc("POST /api/jobs/result", s.handleReceiveJobResult)
 	return mux
 }
 
@@ -119,4 +128,34 @@ func (s *ServerHTTP) handleFetchJobForAgent(w http.ResponseWriter, r *http.Reque
 
 	// Se passar os 5 segundos e não tiver comando, liberamos a conexão do Agente pacificamente
 	w.WriteHeader(http.StatusNoContent) // HTTP 204: Indica sucesso, mas sem dados
+}
+
+func (s *ServerHTTP) handleReceiveJobResult(w http.ResponseWriter, r *http.Request) {
+	// 1. Decodificação do DTO
+	var req UpdateJobResultRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		return
+	}
+
+	// 2. Busca a Entidade original no banco
+	jobRow, err := s.repo.GetJob(req.JobID)
+	if err != nil {
+		http.Error(w, "Comando não encontrado", http.StatusNotFound)
+		return
+	}
+
+	// 3. Aplica a Regra de Negócio: Preenche a data de execução e a saída do terminal
+	now := time.Now()
+	jobRow.ExecutedAt = &now       // Preenche com a data atual
+	jobRow.Output = &req.Output    // Preenche com o que veio do JSON
+
+	// 4. Salva a Entidade atualizada no banco
+	if err := s.repo.UpdateJob(jobRow); err != nil {
+		http.Error(w, "Erro ao atualizar resultado", http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Retorna sucesso (HTTP 200 OK)
+	w.WriteHeader(http.StatusOK)
 }
