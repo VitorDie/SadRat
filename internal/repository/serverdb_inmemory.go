@@ -96,3 +96,15 @@ func (r *ServerDBPlainDataInMemory) UpdateJob(job domain.JobRow) error {
 	r.jobs[job.ID] = job
 	return nil
 }
+
+func (r *ServerDBPlainDataInMemory) GetAllJobs() ([]domain.JobRow, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var allJobs []domain.JobRow
+	for _, job := range r.jobs {
+		allJobs = append(allJobs, job)
+	}
+	
+	return allJobs, nil
+}

