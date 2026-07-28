@@ -51,7 +51,7 @@ func (s *ServerHTTP) Router() http.Handler {
 	// Roteamento REST nativo do Go
 	mux.HandleFunc("POST /api/agents", s.handleGiveAnUUIDForAgentRequest)
 	mux.HandleFunc("POST /api/jobs", s.handleReceiveCommand) // Nova rota do Operador
-	mux.HandleFunc("GET /api/agents/{agent_id}/job", s.handleFetchJobForAgent) // Nova rota para buscar comandos
+	mux.HandleFunc("GET /api/agents/{agent_id}/job", s.handleSendJobs) // Nova rota para buscar comandos
 	mux.HandleFunc("POST /api/jobs/result", s.handleReceiveJobResult)
 	mux.HandleFunc("GET /api/jobs", s.handleSendAllJobResults)
 	mux.HandleFunc("GET /api/jobs/{job_id}/result", s.handleSendJobResult)
@@ -105,7 +105,7 @@ func (s *ServerHTTP) handleReceiveCommand(w http.ResponseWriter, r *http.Request
 }
 
 // handleSendJobs é onde a mágica do Long Polling acontece
-func (s *ServerHTTP) handleFetchJobForAgent(w http.ResponseWriter, r *http.Request) {
+func (s *ServerHTTP) handleSendJobs(w http.ResponseWriter, r *http.Request) {
 	// Extração nativa da variável da URL
 	agentID := r.PathValue("agent_id")
 
