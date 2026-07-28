@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"strings"
+	"fmt"
 
 	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/VitorDie/SadRat/internal/presentation"
@@ -129,5 +130,48 @@ func TestServerHTTP_SendJobs(t *testing.T) {
 
 	if response["command"] != "whoami" {
 		t.Errorf("Esperava o comando 'whoami', mas retornou '%v'", response["command"])
+	}
+}
+
+func TestServerHTTP_ReceiveJobResult(t *testing.T) {
+	// 1. Especificação: Instanciamos o cofre e o Servidor
+	repo := repository.NewServerDBPlainDataInMemory()
+	server := presentation.NewServerHTTP(repo)
+
+	// Simulamos o estado inicial do banco de dados (Agente existe e Comando existe)
+	agentID := "agent-123"
+	repo.SaveAgent(domain.NewAgentRow(agentID))
+	
+	job := domain.NewJobRow(agentID, "whoami", []string{})
+	repo.SaveJob(job) // Salvamos o Job pendente (Output e ExecutedAt estão nulos)
+
+	// 2. Ação: O Agente executou o comando e envia o DTO UpdateJobResult via POST
+	payload := fmt.Sprintf(`{"job_id": "%s", "output": "vitordie\n"}`, job.ID)
+	req, err := http.NewRequest(http.MethodPost, "/api/jobs/result", strings.NewReader(payload))
+	if err != nil {
+		t.Fatalf("Erro ao criar a requisição: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	server.Router().ServeHTTP(rr, req) // Aciona a rota da API
+
+	// 3. Validação de Rota e Status (A API aceitou?)
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Esperava status 200 (OK), recebeu %v", status)
+	}
+
+	// 4. Validação de Regra de Negócio (O Banco de Dados foi atualizado de verdade?)
+	updatedJob, err := repo.GetJob(job.ID)
+	if err != nil {
+		t.Fatalf("Erro ao buscar job atualizado: %v", err)
+	}
+
+	if updatedJob.Output == nil || *updatedJob.Output != "vitordie\n" {
+		t.Errorf("Esperava que o Output fosse salvo como 'vitordie\\n', mas veio %v", updatedJob.Output)
+	}
+
+	if updatedJob.ExecutedAt == nil {
+		t.Error("Esperava que a data de ExecutedAt tivesse sido preenchida com o horário atual, mas continua nula")
 	}
 }
