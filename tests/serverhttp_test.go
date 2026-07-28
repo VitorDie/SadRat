@@ -254,3 +254,42 @@ func TestServerHTTP_SendJobResult(t *testing.T) {
 		t.Errorf("Esperava ler o output 'root\\n', mas retornou %v", response["output"])
 	}
 }
+
+func TestServerHTTP_SendAvailableAgents(t *testing.T) {
+	// 1. Especificação: Instanciamos o cofre e o Servidor
+	repo := repository.NewServerDBPlainDataInMemory()
+	server := presentation.NewServerHTTP(repo)
+
+	// Injetamos dois agentes no banco para o Operador visualizar
+	repo.SaveAgent(domain.NewAgentRow("agent-alfa"))
+	repo.SaveAgent(domain.NewAgentRow("agent-omega"))
+
+	// 2. Ação: O Operador faz um GET para listar os agentes disponíveis
+	req, err := http.NewRequest(http.MethodGet, "/api/agents", nil)
+	if err != nil {
+		t.Fatalf("Erro ao criar a requisição: %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	server.Router().ServeHTTP(rr, req)
+
+	// 3. Validação de Rota e Status
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Esperava status 200 (OK), recebeu %v", status)
+	}
+
+	// 4. Validação do DTO: Como é uma lista, esperamos um Array de JSONs
+	var response []map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatalf("Erro ao decodificar Array de JSON: %v", err)
+	}
+
+	if len(response) != 2 {
+		t.Fatalf("Esperava encontrar 2 agentes no banco, mas retornou %d", len(response))
+	}
+
+	// Verificamos se o primeiro agente da lista é o que criamos
+	if response[0]["id"].(string) != "agent-alfa" {
+		t.Errorf("Esperava ver o agente 'agent-alfa', mas retornou %v", response[0]["id"])
+	}
+}
