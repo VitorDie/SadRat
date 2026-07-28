@@ -175,3 +175,82 @@ func TestServerHTTP_ReceiveJobResult(t *testing.T) {
 		t.Error("Esperava que a data de ExecutedAt tivesse sido preenchida com o horário atual, mas continua nula")
 	}
 }
+
+func TestServerHTTP_SendAllJobResults(t *testing.T) {
+	// 1. Especificação: Instanciamos o cofre e o Servidor
+	repo := repository.NewServerDBPlainDataInMemory()
+	server := presentation.NewServerHTTP(repo)
+
+	// Injetamos um Agente e um Job no banco
+	agentID := "agent-operador-1"
+	repo.SaveAgent(domain.NewAgentRow(agentID))
+	job := domain.NewJobRow(agentID, "ls -la", []string{})
+	repo.SaveJob(job)
+
+	// 2. Ação: O Operador faz um GET para listar todos os jobs
+	req, err := http.NewRequest(http.MethodGet, "/api/jobs", nil)
+	if err != nil {
+		t.Fatalf("Erro ao criar a requisição: %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	server.Router().ServeHTTP(rr, req)
+
+	// 3. Validação
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Esperava status 200 (OK), recebeu %v", status)
+	}
+
+	// Como é uma lista, esperamos um Array de JSONs
+	var response []map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatalf("Erro ao decodificar Array de JSON: %v", err)
+	}
+
+	if len(response) != 1 {
+		t.Fatalf("Esperava encontrar 1 job no banco, mas retornou %d", len(response))
+	}
+
+	// CORREÇÃO DEFINITIVA: Acessamos o índice 0 da lista (slice) e depois a chave "command" do mapa!
+	if response[0]["command"].(string) != "ls -la" {
+		t.Errorf("Esperava ver o comando 'ls -la', mas retornou %v", response[0]["command"])
+	}	
+}
+
+func TestServerHTTP_SendJobResult(t *testing.T) {
+	repo := repository.NewServerDBPlainDataInMemory()
+	server := presentation.NewServerHTTP(repo)
+
+	// Injetamos um job que já possui resultado (Output)
+	agentID := "agent-operador-2"
+	repo.SaveAgent(domain.NewAgentRow(agentID))
+	job := domain.NewJobRow(agentID, "whoami", []string{})
+	
+	output := "root\n"
+	job.Output = &output // Simulamos que o Agente já devolveu a resposta
+	repo.SaveJob(job)
+
+	// 2. Ação: O Operador busca a resposta de um Job específico
+	url := "/api/jobs/" + job.ID + "/result"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("Erro ao criar a requisição: %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	server.Router().ServeHTTP(rr, req)
+
+	// 3. Validação
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Esperava status 200 (OK), recebeu %v", status)
+	}
+
+	var response map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatalf("Erro ao decodificar JSON: %v", err)
+	}
+
+	if response["output"] != "root\n" {
+		t.Errorf("Esperava ler o output 'root\\n', mas retornou %v", response["output"])
+	}
+}
