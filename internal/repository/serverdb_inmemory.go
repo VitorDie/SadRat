@@ -108,3 +108,16 @@ func (r *ServerDBPlainDataInMemory) GetAllJobs() ([]domain.JobRow, error) {
 	
 	return allJobs, nil
 }
+
+// GetAllAgents retorna todos os zumbis registrados no banco de dados.
+func (r *ServerDBPlainDataInMemory) GetAllAgents() ([]domain.AgentRow, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var allAgents []domain.AgentRow
+	for _, agent := range r.agents {
+		allAgents = append(allAgents, agent)
+	}
+	
+	return allAgents, nil
+}

