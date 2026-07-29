@@ -23,17 +23,6 @@ type UpdateJobResultRequest struct {
 	Output string `json:"output"`
 }
 
-// // Repository exige os métodos que o Servidor precisa para funcionar
-// type Repository interface {
-// 	SaveAgent(agent domain.AgentRow) error
-// 	SaveJob(job domain.JobRow) error // Adicionamos a exigência de salvar o comando
-// 	GetJobForAgent(agentID string) (domain.JobRow, error) // Novo método
-// 	GetJob(id string) (domain.JobRow, error) 
-// 	UpdateJob(job domain.JobRow) error
-// 	GetAllJobs() ([]domain.JobRow, error) 
-// 	GetAllAgents() ([]domain.AgentRow, error)
-// }
-
 // ServerHTTP é a nossa API C&C
 type ServerHTTP struct {
 	serverDB domain.ServerDB

