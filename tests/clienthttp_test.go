@@ -89,3 +89,34 @@ func TestClientHTTP_SendCommand(t *testing.T) {
 		t.Errorf("Esperava capturar o ID do comando 'job-teste-123', mas retornou '%s'", jobID)
 	}
 }
+
+func TestClientHTTP_RequestJobResult(t *testing.T) {
+	// 1. Mock do C&C: O Servidor Falso possui o resultado do Agente
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// O Cliente deve bater na rota de ler resultado com o método GET
+		if r.URL.Path != "/api/jobs/job-123/result" || r.Method != http.MethodGet {
+			t.Fatalf("O Cliente tentou acessar %s %s, mas deveria ser GET /api/jobs/job-123/result", r.Method, r.URL.Path)
+		}
+
+		// O C&C falso devolve o JSON do resultado
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"output": "root\n"}`))
+	}))
+	defer mockServer.Close()
+
+	// 2. Especificação: Instanciamos a ferramenta do Operador
+	operador := client.NewClientHTTP(mockServer.URL)
+
+	// 3. Ação: O Operador busca a resposta do seu comando
+	output, err := operador.RequestJobResult("job-123")
+	
+	// 4. Validação: O Cliente extraiu o output do JSON com sucesso?
+	if err != nil {
+		t.Fatalf("O Cliente falhou ao ler o resultado do comando: %v", err)
+	}
+
+	if output != "root\n" {
+		t.Errorf("Esperava capturar a string 'root\\n', mas retornou '%s'", output)
+	}
+}
