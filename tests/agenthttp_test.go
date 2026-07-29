@@ -70,3 +70,27 @@ func TestAgentHTTP_RequestJob(t *testing.T) {
 		t.Errorf("Esperava o comando 'whoami' com ID 'job-999', mas recebeu: %+v", job)
 	}
 }
+
+func TestAgentHTTP_ExecuteJob(t *testing.T) {
+	// 1. Especificação: Instanciamos o Agente 
+	// (Não precisamos de um C&C falso desta vez, pois não faremos requisições de rede)
+	var bot = agent.NewAgentHTTP("")
+
+	// 2. Preparamos um DTO de comando simulando o que viria do servidor
+	job := agent.Job{
+		ID:      "job-teste-exec",
+		Command: "echo",
+		Args:    []string{"zumbi"},
+	}
+
+	// 3. Ação: O Agente invoca o Sistema Operacional para executar o comando
+	output, err := bot.ExecuteJob(job)
+	if err != nil {
+		t.Fatalf("O Agente falhou ao tentar executar o comando no SO: %v", err)
+	}
+
+	// 4. Validação: A saída padrão do terminal (stdout) tem que ser exatamente o que o "echo" cospe
+	if output != "zumbi\n" {
+		t.Errorf("Esperava que o terminal devolvesse 'zumbi\\n', mas retornou '%s'", output)
+	}
+}
