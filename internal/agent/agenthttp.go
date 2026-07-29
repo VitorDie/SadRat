@@ -1,4 +1,4 @@
-package agenthttp
+package agent
 
 import (
 	"bytes"

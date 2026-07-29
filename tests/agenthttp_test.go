@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	// Ajuste este import para bater com a estrutura do seu projeto quando formos para a Fase Verde
-	"github.com/VitorDie/SadRat/internal/agenthttp" 
+	"github.com/VitorDie/SadRat/internal/agent" 
 )
 
 func TestAgentHTTP_RequestAnUUIDToMe(t *testing.T) {
@@ -27,7 +27,7 @@ func TestAgentHTTP_RequestAnUUIDToMe(t *testing.T) {
 
 	// 2. Especificação: Instanciamos o AgenteHTTP passando a URL do Servidor Falso
 	// (Ainda vamos criar o pacote agenthttp e a struct AgentHTTP)
-	bot := agenthttp.NewAgentHTTP(mockServer.URL)
+	bot := agent.NewAgentHTTP(mockServer.URL)
 
 	// 3. Ação: O Agente bate na porta do C&C para pedir sua identidade
 	uuid, err := bot.RequestAnUUIDToMe()
