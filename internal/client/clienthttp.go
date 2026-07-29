@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -62,4 +63,54 @@ func (c *ClientHTTP) RequestAvailableAgents() ([]Agent, error) {
 	}
 
 	return agents, nil
+}
+
+// SendCommand envia a ordem de ataque para o C&C agendar na fila do Agente
+func (c *ClientHTTP) SendCommand(command string, args []string, agentID string) (string, error) {
+	// 1. Monta a URL da rota de criação de comandos no C&C
+	url := c.serverURL + "/api/jobs"
+
+	// 2. Prepara o Payload no formato que a API do nosso C&C espera receber
+	payload := map[string]interface{}{
+		"command":  command,
+		"args":     args,
+		"agent_id": agentID,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	// 3. Prepara a requisição HTTP POST
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// 4. O Operador aperta "Enter" e dispara a requisição
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// 5. Valida se o Servidor aceitou e criou o comando
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return "", errors.New("falha ao despachar comando, status: " + resp.Status)
+	}
+
+	// 6. Lemos a resposta do C&C para extrair o ID do Job gerado
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	jobID, ok := result["id"].(string)
+	if !ok {
+		return "", errors.New("o C&C não retornou o ID do comando gerado")
+	}
+
+	return jobID, nil
 }
