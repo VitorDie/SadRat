@@ -8,6 +8,7 @@ import (
 
 	// Ajuste este import para bater com a estrutura do seu projeto quando formos para a Fase Verde
 	"github.com/VitorDie/SadRat/internal/agent" 
+	"github.com/VitorDie/SadRat/internal/dto"
 )
 
 func TestAgentHTTP_RequestAnUUIDToMe(t *testing.T) {
@@ -77,7 +78,7 @@ func TestAgentHTTP_ExecuteJob(t *testing.T) {
 	var bot = agent.NewAgentHTTP("")
 
 	// 2. Preparamos um DTO de comando simulando o que viria do servidor
-	job := agent.Job{
+	job := dto.JobUsedByAgentDTO{
 		ID:      "job-teste-exec",
 		Command: "echo",
 		Args:    []string{"zumbi"},
