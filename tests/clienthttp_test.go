@@ -47,3 +47,44 @@ func TestClientHTTP_RequestAvailableAgents(t *testing.T) {
 		t.Errorf("Esperava que o primeiro agente fosse o 'agent-alfa', mas foi '%s'", agents[0].ID)
 	}
 }
+
+func TestClientHTTP_SendCommand(t *testing.T) {
+	// 1. Mock do C&C: O Servidor Falso espera receber a ordem de ataque
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// O Cliente deve bater na rota de criar comandos com o método POST
+		if r.URL.Path != "/api/jobs" || r.Method != http.MethodPost {
+			t.Fatalf("O Cliente tentou acessar %s %s, mas deveria ser POST /api/jobs", r.Method, r.URL.Path)
+		}
+
+		// Valida se o Operador enviou o DTO corretamente
+		var req map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("O Cliente não enviou um JSON válido: %v", err)
+		}
+
+		if req["agent_id"] != "agent-alfa" || req["command"] != "whoami" {
+			t.Errorf("O Cliente enviou os dados errados para o C&C: %+v", req)
+		}
+
+		// O C&C falso devolve o JSON do Job criado contendo o ID
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id": "job-teste-123", "agent_id": "agent-alfa", "command": "whoami"}`))
+	}))
+	defer mockServer.Close()
+
+	// 2. Especificação: Instanciamos a ferramenta do Operador
+	operador := client.NewClientHTTP(mockServer.URL)
+
+	// 3. Ação: O Operador despacha o comando mortal
+	jobID, err := operador.SendCommand("whoami", []string{}, "agent-alfa")
+	
+	// 4. Validação: O Cliente retornou o ID do comando gerado pelo C&C?
+	if err != nil {
+		t.Fatalf("O Cliente falhou ao despachar o comando: %v", err)
+	}
+
+	if jobID != "job-teste-123" {
+		t.Errorf("Esperava capturar o ID do comando 'job-teste-123', mas retornou '%s'", jobID)
+	}
+}
