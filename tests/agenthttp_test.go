@@ -57,7 +57,7 @@ func TestAgentHTTP_RequestJob(t *testing.T) {
 	defer mockServer.Close()
 
 	// 2. Especificação: Instanciamos o AgenteHTTP
-	var bot agent.Agent = agent.NewAgentHTTP(mockServer.URL)
+	var bot = agent.NewAgentHTTP(mockServer.URL)
 
 	// 3. Ação: O Agente pede o seu próximo comando passando sua identidade
 	job, err := bot.RequestJob("agent-123")
