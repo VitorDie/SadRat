@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	// Ajuste este import para bater com a estrutura do seu projeto quando formos para a Fase Verde
-	// "github.com/VitorDie/SadRat/internal/agenthttp" 
+	"github.com/VitorDie/SadRat/internal/agenthttp" 
 )
 
 func TestAgentHTTP_RequestAnUUIDToMe(t *testing.T) {
