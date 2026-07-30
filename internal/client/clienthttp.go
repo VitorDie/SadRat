@@ -6,17 +6,13 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"github.com/VitorDie/SadRat/internal/dto"
 )
 
-// Agent representa a máquina infectada (Zumbi) na visão do Operador
-type Agent struct {
-	ID string `json:"id"`
-}
-
-// Client é a Interface genérica para a ferramenta do Operador (preparada para ClientDNS no futuro!)
-type Client interface {
-	RequestAvailableAgents() ([]Agent, error)
-}
+// // Agent representa a máquina infectada (Zumbi) na visão do Operador
+// type Agent struct {
+// 	ID string `json:"id"`
+// }
 
 // ClientHTTP é a implementação específica que fala com o C&C via HTTP
 type ClientHTTP struct {
@@ -34,7 +30,7 @@ func NewClientHTTP(serverURL string) *ClientHTTP {
 }
 
 // RequestAvailableAgents bate no C&C e busca todos os zumbis sob nosso controle
-func (c *ClientHTTP) RequestAvailableAgents() ([]Agent, error) {
+func (c *ClientHTTP) RequestAvailableAgents() ([]dto.AgentUsedByClientDTO, error) {
 	// 1. Monta a URL da nossa API
 	url := c.serverURL + "/api/agents"
 
@@ -57,7 +53,7 @@ func (c *ClientHTTP) RequestAvailableAgents() ([]Agent, error) {
 	}
 
 	// 5. Lemos o JSON com a lista de zumbis e convertemos para o nosso DTO (Slice de Agent)
-	var agents []Agent
+	var agents []dto.AgentUsedByClientDTO
 	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
 		return nil, err
 	}
