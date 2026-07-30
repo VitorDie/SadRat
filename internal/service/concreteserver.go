@@ -74,8 +74,21 @@ func (s *ConcreteServer) ReceiveJobResult(jobID string, output string) error {
 	return s.db.UpdateJob(job)
 }
 
+// SendJobResult busca um Job específico e retorna apenas a string com o output (para o Operador)
 func (s *ConcreteServer) SendJobResult(jobID string) (string, error) {
-	return "", nil
+	// 1. Regra de negócio: Buscar o Job na Camada de Repositório
+	job, err := s.db.GetJob(jobID)
+	if err != nil {
+		return "", err
+	}
+
+	// 2. Regra de negócio: Extrair o resultado com segurança (lidando com o ponteiro)
+	if job.Output == nil {
+		return "", nil // Se o zumbi ainda não enviou o resultado, devolvemos uma string vazia
+	}
+
+	// Retorna o valor real da string desreferenciando o ponteiro
+	return *job.Output, nil
 }
 
 func (s *ConcreteServer) SendAllJobResults() ([]domain.JobRow, error) {
