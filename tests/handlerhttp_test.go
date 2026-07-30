@@ -2,11 +2,11 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"strings"
-	"fmt"
+	"testing"
 	"time"
 
 	"github.com/VitorDie/SadRat/internal/domain"
@@ -60,7 +60,6 @@ func TestHandlerHTTP_Start_GiveAnUUIDForAgentRequest(t *testing.T) {
 	}
 }
 
-
 func TestServerHTTP_GiveAnUUIDForAgentRequest(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e injetamos no Servidor HTTP
 	repo := repository.NewServerDBPlainDataInMemory()
@@ -75,7 +74,7 @@ func TestServerHTTP_GiveAnUUIDForAgentRequest(t *testing.T) {
 
 	// O Recorder atua como se fosse o "navegador/cliente" para capturar a resposta
 	rr := httptest.NewRecorder()
-	
+
 	// A função Router() deve devolver o roteador que contém as URLs mapeadas
 	handler.Router().ServeHTTP(rr, req)
 
@@ -115,7 +114,7 @@ func TestServerHTTP_ReceiveCommand(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json") // A API exige JSON
 
 	rr := httptest.NewRecorder()
-	
+
 	// O Roteador recebe a requisição HTTP e deve encaminhar para a função correta
 	handler.Router().ServeHTTP(rr, req)
 
@@ -163,7 +162,7 @@ func TestServerHTTP_SendJobs(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	
+
 	// O Roteador recebe a requisição HTTP e deve processar
 	handler.Router().ServeHTTP(rr, req)
 
@@ -193,7 +192,7 @@ func TestServerHTTP_ReceiveJobResult(t *testing.T) {
 	// Simulamos o estado inicial do banco de dados (Agente existe e Comando existe)
 	agentID := "agent-123"
 	repo.SaveAgent(domain.NewAgentRow(agentID))
-	
+
 	job := domain.NewJobRow(agentID, "whoami", []string{})
 	repo.SaveJob(job) // Salvamos o Job pendente (Output e ExecutedAt estão nulos)
 
@@ -267,7 +266,7 @@ func TestServerHTTP_SendAllJobResults(t *testing.T) {
 	// CORREÇÃO DEFINITIVA: Acessamos o índice 0 da lista (slice) e depois a chave "command" do mapa!
 	if response[0]["command"].(string) != "ls -la" {
 		t.Errorf("Esperava ver o comando 'ls -la', mas retornou %v", response[0]["command"])
-	}	
+	}
 }
 
 func TestServerHTTP_SendJobResult(t *testing.T) {
@@ -279,7 +278,7 @@ func TestServerHTTP_SendJobResult(t *testing.T) {
 	agentID := "agent-operador-2"
 	repo.SaveAgent(domain.NewAgentRow(agentID))
 	job := domain.NewJobRow(agentID, "whoami", []string{})
-	
+
 	output := "root\n"
 	job.Output = &output // Simulamos que o Agente já devolveu a resposta
 	repo.SaveJob(job)
