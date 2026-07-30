@@ -91,6 +91,8 @@ func (s *ConcreteServer) SendJobResult(jobID string) (string, error) {
 	return *job.Output, nil
 }
 
+// SendAllJobResults busca o histórico de todos os comandos já disparados
 func (s *ConcreteServer) SendAllJobResults() ([]domain.JobRow, error) {
-	return nil, nil
+	// A regra de negócio aqui delega a busca da lista completa para a Camada de Repositório
+	return s.db.GetAllJobs()
 }
