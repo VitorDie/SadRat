@@ -58,8 +58,20 @@ func (s *ConcreteServer) SendJobs(agentID string) (domain.JobRow, error) {
 	return s.db.GetJobForAgent(agentID)
 }
 
+// ReceiveJobResult recebe o output do comando executado no zumbi e atualiza a entidade
 func (s *ConcreteServer) ReceiveJobResult(jobID string, output string) error {
-	return nil
+	// 1. Regra de Negócio: Buscamos a entidade atual no banco
+	job, err := s.db.GetJob(jobID)
+	if err != nil {
+		return err // Retorna o erro e aborta se o Job não existir
+	}
+
+	// 2. Regra de Negócio: Atualizamos o Output do comando.
+	// Como na sua struct o Output é um ponteiro (*string), usamos '&' para pegar o endereço da variável
+	job.Output = &output
+
+	// 3. Persistência: Salvamos a entidade atualizada de volta no banco
+	return s.db.UpdateJob(job)
 }
 
 func (s *ConcreteServer) SendJobResult(jobID string) (string, error) {
