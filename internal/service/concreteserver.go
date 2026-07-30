@@ -57,8 +57,10 @@ func (s *ConcreteServer) ReceiveCommand(command string, args []string, agentID s
 	return jobRow.ID, nil
 }
 
+// SendJobs busca um comando pendente na fila para um Agente específico
 func (s *ConcreteServer) SendJobs(agentID string) (domain.JobRow, error) {
-	return domain.JobRow{}, nil
+	// A regra de negócio delega a busca para a interface do Banco de Dados
+	return s.db.GetJobForAgent(agentID)
 }
 
 func (s *ConcreteServer) ReceiveJobResult(jobID string, output string) error {
