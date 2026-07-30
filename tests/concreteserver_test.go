@@ -9,9 +9,9 @@ import (
 
 // Mock do nosso Banco de Dados para que a Camada de Serviço possa ser testada
 // sem precisar de uma conexão real com PostgreSQL ou SQLite.
-type MockServerDB struct{
+type MockServerDB struct {
 	// Adicionamos essa variável para o Mock "lembrar" qual job foi atualizado
-	UpdatedJob domain.JobRow 
+	UpdatedJob domain.JobRow
 }
 
 // Os métodos que realmente importam para o nosso primeiro teste:
@@ -23,16 +23,19 @@ func (m *MockServerDB) GetJobForAgent(agentID string) (domain.JobRow, error) {
 	// Simulamos que o banco encontrou um comando "whoami" pendente para este zumbi
 	return domain.JobRow{ID: "job-mock-1", AgentID: agentID, Command: "whoami"}, nil
 }
-// Simulamos que o banco encontrou o Job que o Zumbi está tentando atualizar
-func (m *MockServerDB) GetJob(id string) (domain.JobRow, error) { 
-	return domain.JobRow{ID: id, Command: "whoami"}, nil 
+
+// Simulamos que o banco encontrou o Job e ele já possui um resultado (Output)
+func (m *MockServerDB) GetJob(id string) (domain.JobRow, error) {
+	saida := "root\n"
+	return domain.JobRow{ID: id, Command: "whoami", Output: &saida}, nil
 }
+
 // O Mock agora "grava" a entidade que o Serviço mandou atualizar
-func (m *MockServerDB) UpdateJob(job domain.JobRow) error { 
+func (m *MockServerDB) UpdateJob(job domain.JobRow) error {
 	m.UpdatedJob = job
-	return nil 
+	return nil
 }
-func (m *MockServerDB) GetAllJobs() ([]domain.JobRow, error)    { return nil, nil }
+func (m *MockServerDB) GetAllJobs() ([]domain.JobRow, error) { return nil, nil }
 func (m *MockServerDB) GetAllAgents() ([]domain.AgentRow, error) {
 	// Simulamos que o banco de dados tem 1 zumbi infectado
 	return []domain.AgentRow{{UUID: "zumbi-mock-1"}}, nil
@@ -158,5 +161,28 @@ func TestConcreteServer_ReceiveJobResult(t *testing.T) {
 	} else if *mockDB.UpdatedJob.Output != resultadoDoZumbi {
 		// Se não for nulo, usamos o asterisco '*' para desreferenciar o ponteiro e acessar a string real
 		t.Errorf("A regra de negócio falhou. Esperava o output '%s', mas recebeu '%s'", resultadoDoZumbi, *mockDB.UpdatedJob.Output)
-	}	
+	}
+}
+
+func TestConcreteServer_SendJobResult(t *testing.T) {
+	// 1. Instanciamos o Cofre falso (Mock)
+	mockDB := &MockServerDB{}
+	var regraDeNegocio domain.Server = service.NewConcreteServer(mockDB)
+
+	jobID := "job-mock-1"
+	resultadoEsperado := "root\n"
+
+	// 2. Ação: O Operador pede para ver o resultado do ataque
+	resultado, err := regraDeNegocio.SendJobResult(jobID)
+
+	// 3. Validação de Erro
+	if err != nil {
+		t.Fatalf("Esperava sucesso ao buscar o resultado, mas falhou: %v", err)
+	}
+
+	// 4. Validação Lógica
+	// Como o nosso stub em concreteserver.go ainda retorna apenas "", este teste deve falhar!
+	if resultado != resultadoEsperado {
+		t.Errorf("A regra de negócio falhou. Esperava repassar o output '%s', mas recebeu '%s'", resultadoEsperado, resultado)
+	}
 }
