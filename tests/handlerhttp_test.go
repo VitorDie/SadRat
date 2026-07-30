@@ -7,12 +7,59 @@ import (
 	"testing"
 	"strings"
 	"fmt"
+	"time"
 
 	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/VitorDie/SadRat/internal/presentation"
 	"github.com/VitorDie/SadRat/internal/repository"
 	"github.com/VitorDie/SadRat/internal/service"
 )
+
+func TestHandlerHTTP_Start_GiveAnUUIDForAgentRequest(t *testing.T) {
+	// 1. Especificação: Instanciamos o cofre e injetamos no Servidor HTTP
+	repo := repository.NewServerDBPlainDataInMemory()
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
+
+	// 2. Ação: Subimos o servidor REAL em segundo plano (Goroutine)
+	// Escolhemos uma porta de teste (ex: 8181)
+	portaDeTeste := ":8181"
+	go func() {
+		// O Start vai travar essa goroutine e ficar escutando a porta
+		err := handler.Start(portaDeTeste)
+		if err != nil && err != http.ErrServerClosed {
+			panic("Erro ao subir o servidor de testes: " + err.Error())
+		}
+	}()
+
+	// Damos um fôlego de 100 milissegundos para o servidor ter tempo de abrir a porta
+	time.Sleep(100 * time.Millisecond)
+
+	// 3. O Zumbi entra em ação: Fazemos uma requisição HTTP REAL pela placa de rede
+	urlDoServidor := "http://localhost" + portaDeTeste + "/api/agents"
+	resp, err := http.Post(urlDoServidor, "application/json", nil)
+	if err != nil {
+		t.Fatalf("Erro ao tentar conectar no servidor real: %v", err)
+	}
+	defer resp.Body.Close() // Boa prática: sempre fechar o corpo da resposta
+
+	// 4. Validação de Status HTTP
+	if status := resp.StatusCode; status != http.StatusCreated {
+		t.Errorf("Esperava status %v, recebeu %v", http.StatusCreated, status)
+	}
+
+	// 5. Validação do DTO de Resposta (JSON)
+	var response map[string]string
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		t.Fatalf("Erro ao decodificar JSON da API: %v", err)
+	}
+
+	if response["uuid"] == "" {
+		t.Error("A API deveria ter gerado e devolvido um UUID em JSON, mas veio vazio")
+	}
+}
+
 
 func TestServerHTTP_GiveAnUUIDForAgentRequest(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e injetamos no Servidor HTTP

@@ -50,6 +50,15 @@ func (h *HandlerHTTP) Router() *http.ServeMux {
 	return mux
 }
 
+// Start IMPLEMENTA A INTERFACE domain.Handler
+// Ele chama o Router internamente e, de fato, sobe o servidor web!
+func (h *HandlerHTTP) Start(address string) error {
+	roteador := h.Router()
+	
+	// O ListenAndServe sobe o servidor e passa a escutar no endereço recebido (ex: ":8080")
+	return http.ListenAndServe(address, roteador)
+}
+
 // handleGiveAnUUIDForAgentRequest registra um novo zumbi
 func (h *HandlerHTTP) handleGiveAnUUIDForAgentRequest(w http.ResponseWriter, r *http.Request) {
 	// 1. O Garçom pede para a Cozinha (Service) registrar o agente.
