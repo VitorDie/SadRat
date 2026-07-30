@@ -1,5 +1,5 @@
 opção 1:
-e: sadrat8.txt | d: brokenheart1.txt
+e: sadrat11.txt | d: brokenheart1.txt
 
 opção 2:
-e: sadrat11.txt | d: sadFace1.txt
+e: sadrat8.txt | d: sadFace1.txt
