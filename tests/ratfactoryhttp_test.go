@@ -55,3 +55,13 @@ func TestRatHttpFactory_CreateAgent(t *testing.T) {
 		t.Fatalf("Esperava receber um Agent instanciado, mas retornou nil")
 	}
 }
+
+func TestRatHttpFactory_CreateWorm(t *testing.T) {
+	repo := repository.NewServerDBPlainDataInMemory()
+	var ratFactory domain.RatFactory = factory.NewRatFactoryHttp(repo, "http://localhost:8080")
+	worm := ratFactory.CreateWorm()
+
+	if worm == nil {
+		t.Fatalf("Esperava receber um Worm instanciado, mas retornou nil")
+	}
+}

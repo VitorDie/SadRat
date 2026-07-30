@@ -4,7 +4,7 @@ package domain
 type RatFactory interface {
 	CreateClient() Client
 	CreateAgent() Agent
-	// CreateWorm() Worm
+	CreateWorm() Worm
 
 	CreateServer() Server
 	CreateHandler() Handler

