@@ -8,7 +8,7 @@ import (
 
 	// Ajuste este import para bater com a estrutura do seu projeto quando formos para a Fase Verde
 	"github.com/VitorDie/SadRat/internal/agent" 
-	"github.com/VitorDie/SadRat/internal/dto"
+	"github.com/VitorDie/SadRat/internal/domain"
 )
 
 func TestAgentHTTP_RequestAnUUIDToMe(t *testing.T) {
@@ -77,8 +77,8 @@ func TestAgentHTTP_ExecuteJob(t *testing.T) {
 	// (Não precisamos de um C&C falso desta vez, pois não faremos requisições de rede)
 	var bot = agent.NewAgentHTTP("")
 
-	// 2. Preparamos um DTO de comando simulando o que viria do servidor
-	job := dto.JobUsedByAgentDTO{
+	// 2. Preparamos uma Entidade de comando simulando a regra de negócio pura (Não é mais DTO!)
+	job := domain.JobEntity{
 		ID:      "job-teste-exec",
 		Command: "echo",
 		Args:    []string{"zumbi"},

