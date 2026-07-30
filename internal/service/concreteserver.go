@@ -41,8 +41,18 @@ func (s *ConcreteServer) SendAvailableAgents() ([]domain.AgentRow, error) {
 	return nil, nil
 }
 
+// ReceiveCommand recebe o comando do Operador, transforma em Entidade, salva e retorna o ID
 func (s *ConcreteServer) ReceiveCommand(command string, args []string, agentID string) (string, error) {
-	return "", nil
+	// 1. Regra de Negócio: Criamos a Entidade (que já gera o UUID do Job internamente)
+	jobRow := domain.NewJobRow(agentID, command, args)
+
+	// 2. Persistência: Injetamos o comando na fila do Banco de Dados
+	if err := s.db.SaveJob(jobRow); err != nil {
+		return "", err
+	}
+
+	// 3. Retornamos o ID do Job para o "Garçom" (HandlerHTTP) repassar ao Operador
+	return jobRow.ID, nil
 }
 
 func (s *ConcreteServer) SendJobs(agentID string) (domain.JobRow, error) {
