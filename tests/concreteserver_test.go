@@ -45,3 +45,28 @@ func TestConcreteServer_GiveAnUUIDForAgentRequest(t *testing.T) {
 	}
 }
 
+func TestConcreteServer_ReceiveCommand(t *testing.T) {
+	// 1. Instanciamos o Cofre falso (Mock)
+	mockDB := &MockServerDB{}
+
+	// 2. Especificação: Instanciamos a nossa Camada de Serviço
+	var regraDeNegocio domain.Server = service.NewConcreteServer(mockDB)
+
+	// Simula um Operador tentando atacar um Agente específico
+	agentID := "zumbi-alfa-123"
+	comando := "whoami"
+	argumentos := []string{}
+
+	// 3. Ação: Solicitamos o despacho do ataque
+	jobID, err := regraDeNegocio.ReceiveCommand(comando, argumentos, agentID)
+
+	// 4. Validação
+	if err != nil {
+		t.Fatalf("Esperava sucesso ao despachar comando, mas falhou: %v", err)
+	}
+
+	// O JobID retornado precisa ser um UUID válido (36 caracteres)
+	if len(jobID) < 32 {
+		t.Errorf("Esperava um JobID válido, mas retornou algo inválido ou vazio: '%s'", jobID)
+	}
+}
