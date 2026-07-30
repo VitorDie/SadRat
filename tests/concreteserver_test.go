@@ -20,8 +20,10 @@ func (m *MockServerDB) GetJobForAgent(agentID string) (domain.JobRow, error) { r
 func (m *MockServerDB) GetJob(id string) (domain.JobRow, error) { return domain.JobRow{}, nil }
 func (m *MockServerDB) UpdateJob(job domain.JobRow) error { return nil }
 func (m *MockServerDB) GetAllJobs() ([]domain.JobRow, error) { return nil, nil }
-func (m *MockServerDB) GetAllAgents() ([]domain.AgentRow, error) { return nil, nil }
-
+func (m *MockServerDB) GetAllAgents() ([]domain.AgentRow, error) { 
+	// Simulamos que o banco de dados tem 1 zumbi infectado
+	return []domain.AgentRow{{UUID: "zumbi-mock-1"}}, nil 
+}
 func TestConcreteServer_GiveAnUUIDForAgentRequest(t *testing.T) {
 	// 1. Instanciamos o Cofre falso (Mock)
 	mockDB := &MockServerDB{}
@@ -68,5 +70,29 @@ func TestConcreteServer_ReceiveCommand(t *testing.T) {
 	// O JobID retornado precisa ser um UUID válido (36 caracteres)
 	if len(jobID) < 32 {
 		t.Errorf("Esperava um JobID válido, mas retornou algo inválido ou vazio: '%s'", jobID)
+	}
+}
+
+func TestConcreteServer_SendAvailableAgents(t *testing.T) {
+	// 1. Instanciamos o Cofre falso (Mock)
+	mockDB := &MockServerDB{}
+
+	// 2. Especificação: Instanciamos a nossa Camada de Serviço
+	var regraDeNegocio domain.Server = service.NewConcreteServer(mockDB)
+
+	// 3. Ação: Solicitamos a lista de agentes disponíveis
+	agentes, err := regraDeNegocio.SendAvailableAgents()
+
+	// 4. Validação
+	if err != nil {
+		t.Fatalf("Esperava sucesso ao buscar agentes, mas falhou: %v", err)
+	}
+
+	if len(agentes) == 0 {
+		t.Errorf("Esperava receber a lista de agentes do banco, mas retornou vazia")
+	}
+
+	if len(agentes) > 0 && agentes[0].UUID != "zumbi-mock-1" {
+		t.Errorf("Esperava o agente 'zumbi-mock-1', mas recebeu: '%s'", agentes[0].UUID)
 	}
 }
