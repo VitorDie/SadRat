@@ -37,8 +37,10 @@ func (s *ConcreteServer) GiveAnUUIDForAgentRequest() (string, error) {
 // Vamos implementá-los um a um nos próximos ciclos de TDD!
 // =========================================================================
 
+// SendAvailableAgents busca todos os zumbis registrados no banco e os retorna
 func (s *ConcreteServer) SendAvailableAgents() ([]domain.AgentRow, error) {
-	return nil, nil
+	// A regra de negócio aqui delega a busca para a interface do Banco de Dados
+	return s.db.GetAllAgents()
 }
 
 // ReceiveCommand recebe o comando do Operador, transforma em Entidade, salva e retorna o ID
