@@ -4,23 +4,23 @@ import (
 	"testing"
 
 	"github.com/VitorDie/SadRat/internal/domain"
-	// O pacote que vamos criar na Fase Verde:
-	// "github.com/VitorDie/SadRat/internal/service"
+	"github.com/VitorDie/SadRat/internal/service"
 )
 
 // Mock do nosso Banco de Dados para que a Camada de Serviço possa ser testada 
-// sem precisar de uma conexão real com PostgreSQL, SQLite, etc.
+// sem precisar de uma conexão real com PostgreSQL ou SQLite.
 type MockServerDB struct{}
 
-// O Mock apenas finge que salvou o agente com sucesso
-func (m *MockServerDB) SaveAgent(agent domain.AgentRow) error {
-	return nil
-}
+// Os métodos que realmente importam para o nosso primeiro teste:
+func (m *MockServerDB) SaveAgent(agent domain.AgentRow) error { return nil }
 
-// Simulamos os outros métodos do DB para satisfazer a interface (deixamos vazios por enquanto)
+// Os STUBS (funções vazias) para satisfazer o resto da interface domain.ServerDB:
 func (m *MockServerDB) SaveJob(job domain.JobRow) error { return nil }
-// (Adicione aqui outros métodos vazios que a sua domain.ServerDB exige)
-
+func (m *MockServerDB) GetJobForAgent(agentID string) (domain.JobRow, error) { return domain.JobRow{}, nil }
+func (m *MockServerDB) GetJob(id string) (domain.JobRow, error) { return domain.JobRow{}, nil }
+func (m *MockServerDB) UpdateJob(job domain.JobRow) error { return nil }
+func (m *MockServerDB) GetAllJobs() ([]domain.JobRow, error) { return nil, nil }
+func (m *MockServerDB) GetAllAgents() ([]domain.AgentRow, error) { return nil, nil }
 
 func TestConcreteServer_GiveAnUUIDForAgentRequest(t *testing.T) {
 	// 1. Instanciamos o Cofre falso (Mock)
@@ -44,3 +44,4 @@ func TestConcreteServer_GiveAnUUIDForAgentRequest(t *testing.T) {
 		t.Errorf("Esperava um UUID válido, mas retornou algo muito curto: '%s'", uuidStr)
 	}
 }
+
